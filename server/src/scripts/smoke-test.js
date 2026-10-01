@@ -39,7 +39,7 @@ async function runSmokeTests() {
   console.log('====================================================\n');
 
   try {
-    initSupabase();
+    initSupabase({ forceFallback: true });
     resetInMemoryStore();
 
     // Start ephemeral server on random free port

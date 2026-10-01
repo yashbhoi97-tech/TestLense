@@ -160,18 +160,19 @@ class InMemorySupabaseClient {
   }
 }
 
-export function initSupabase() {
+export function initSupabase(options = {}) {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY;
   const isProd = process.env.NODE_ENV === 'production';
+  const isTest = process.env.NODE_ENV === 'test' || options.forceFallback;
 
-  if (!url || !key) {
-    if (isProd) {
+  if (isTest || !url || !key) {
+    if (isProd && !options.forceFallback) {
       console.error('FATAL: SUPABASE_URL and SUPABASE_SECRET_KEY are required in production environment.');
       process.exit(1);
     }
 
-    console.log('No SUPABASE_URL / SUPABASE_SECRET_KEY provided in development. Initializing in-memory Supabase adapter...');
+    console.log('[Supabase] Initializing in-memory Supabase adapter (isolated test/dev mode)...');
     supabaseClient = new InMemorySupabaseClient();
     isInMemoryFallback = true;
     return supabaseClient;
