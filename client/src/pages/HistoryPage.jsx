@@ -32,7 +32,7 @@ export default function HistoryPage() {
         mode: modeFilter || undefined,
         riskLevel: riskFilter || undefined
       });
-      setScans(res.data.scans || []);
+      setScans(res?.data?.scans || []);
     } catch (err) {
       setError(err.message || 'Failed to load history');
     } finally {

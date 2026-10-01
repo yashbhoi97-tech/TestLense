@@ -24,10 +24,10 @@ export async function getStats(req, res, next) {
             'trust-auditor': 0
           },
           riskDistribution: [
-            { level: 'low', count: 0, color: '#10B981' },
-            { level: 'medium', count: 0, color: '#F59E0B' },
-            { level: 'high', count: 0, color: '#EF4444' },
-            { level: 'critical', count: 0, color: '#DC2626' }
+            { name: 'Low (0-24)', level: 'low', value: 0, color: '#10B981' },
+            { name: 'Medium (25-49)', level: 'medium', value: 0, color: '#F59E0B' },
+            { name: 'High (50-74)', level: 'high', value: 0, color: '#F97316' },
+            { name: 'Critical (75-100)', level: 'critical', value: 0, color: '#EF4444' }
           ],
           topThreats: [],
           timeline: [],

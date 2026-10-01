@@ -13,28 +13,34 @@ import PrivacyPage from './pages/PrivacyPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 
+import ErrorBoundary from './components/common/ErrorBoundary';
+
 export default function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <div className="min-h-screen flex flex-col bg-background text-navy-900 font-sans selection:bg-primary-100 selection:text-primary-dark">
-          <Navbar />
-          <main className="flex-1">
-            <Routes>
-              <Route path="/" element={<LandingPage />} />
-              <Route path="/scan" element={<ScanPage />} />
-              <Route path="/dashboard" element={<DashboardPage />} />
-              <Route path="/history" element={<HistoryPage />} />
-              <Route path="/privacy" element={<PrivacyPage />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </main>
-          <Footer />
-          <LenseChatbot />
-        </div>
-      </Router>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <Router>
+          <div className="min-h-screen flex flex-col bg-background text-navy-900 font-sans selection:bg-primary-100 selection:text-primary-dark">
+            <Navbar />
+            <main className="flex-1">
+              <ErrorBoundary>
+                <Routes>
+                  <Route path="/" element={<LandingPage />} />
+                  <Route path="/scan" element={<ScanPage />} />
+                  <Route path="/dashboard" element={<DashboardPage />} />
+                  <Route path="/history" element={<HistoryPage />} />
+                  <Route path="/privacy" element={<PrivacyPage />} />
+                  <Route path="/login" element={<LoginPage />} />
+                  <Route path="/register" element={<RegisterPage />} />
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </ErrorBoundary>
+            </main>
+            <Footer />
+            <LenseChatbot />
+          </div>
+        </Router>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
