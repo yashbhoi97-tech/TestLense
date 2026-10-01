@@ -8,7 +8,7 @@ export async function getStats(req, res, next) {
     }
 
     const totalScans = await Scan.countDocuments(query);
-    const scans = await Scan.find(query).sort({ createdAt: -1 }).limit(100);
+    const scans = await Scan.find(query, { limit: 100 });
 
     if (totalScans === 0) {
       return res.json({

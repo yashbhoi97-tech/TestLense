@@ -18,7 +18,7 @@ export async function requireAuth(req, res, next) {
     const secret = process.env.JWT_SECRET || 'trustlense_fallback_secret_39281';
     
     const decoded = jwt.verify(token, secret);
-    const user = await User.findById(decoded.id).select('-passwordHash');
+    const user = await User.findById(decoded.id);
 
     if (!user) {
       return res.status(401).json({
@@ -50,7 +50,7 @@ export async function optionalAuth(req, res, next) {
       const token = authHeader.split(' ')[1];
       const secret = process.env.JWT_SECRET || 'trustlense_fallback_secret_39281';
       const decoded = jwt.verify(token, secret);
-      const user = await User.findById(decoded.id).select('-passwordHash');
+      const user = await User.findById(decoded.id);
       if (user) {
         req.user = user;
       }

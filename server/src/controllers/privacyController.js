@@ -4,10 +4,7 @@ import { Ticket } from '../models/Ticket.js';
 
 export async function getAuditLogs(req, res, next) {
   try {
-    const logs = await AuditLog.find({ userId: req.user._id })
-      .sort({ createdAt: -1 })
-      .limit(100)
-      .select('-__v');
+    const logs = await AuditLog.find({ userId: req.user._id }, { limit: 100 });
 
     res.json({
       success: true,

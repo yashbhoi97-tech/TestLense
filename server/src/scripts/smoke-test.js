@@ -1,6 +1,6 @@
 import http from 'http';
 import app from '../app.js';
-import { connectDB, disconnectDB } from '../config/db.js';
+import { initSupabase, resetInMemoryStore } from '../config/supabase.js';
 import { Scan } from '../models/Scan.js';
 import { User } from '../models/User.js';
 
@@ -39,7 +39,8 @@ async function runSmokeTests() {
   console.log('====================================================\n');
 
   try {
-    await connectDB();
+    initSupabase();
+    resetInMemoryStore();
 
     // Start ephemeral server on random free port
     await new Promise((resolve) => {
@@ -128,7 +129,7 @@ async function runSmokeTests() {
     assert(!redactedText.includes(rawAadhaar) && !redactedText.includes(rawPan) && !redactedText.includes(rawCard), 'Redacted output scrubbed raw Aadhaar, PAN, and Card numbers');
 
     // 12. Privacy rule: raw sensitive data NOT stored in database
-    const dbScanDoc = await Scan.findById(testScanId).lean();
+    const dbScanDoc = await Scan.findById(testScanId);
     const docString = JSON.stringify(dbScanDoc);
     assert(!docString.includes(rawAadhaar) && !docString.includes(rawPan) && !docString.includes(rawCard), 'PRIVACY GUARANTEE: Raw sensitive numbers are NOT present anywhere in database scan document');
 
@@ -222,7 +223,6 @@ async function runSmokeTests() {
     process.exit(1);
   } finally {
     if (server) server.close();
-    await disconnectDB();
   }
 }
 

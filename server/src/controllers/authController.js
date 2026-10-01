@@ -38,7 +38,7 @@ export async function register(req, res, next) {
     const { name, email, password } = validated.data;
     const normalizedEmail = email.toLowerCase().trim();
 
-    const existing = await User.findOne({ email: normalizedEmail });
+    const existing = await User.findByEmail(normalizedEmail);
     if (existing) {
       return res.status(409).json({
         success: false,
@@ -99,7 +99,7 @@ export async function login(req, res, next) {
     const { email, password } = validated.data;
     const normalizedEmail = email.toLowerCase().trim();
 
-    const user = await User.findOne({ email: normalizedEmail });
+    const user = await User.findByEmail(normalizedEmail);
     if (!user) {
       return res.status(401).json({
         success: false,

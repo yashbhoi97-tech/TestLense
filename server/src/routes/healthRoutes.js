@@ -1,11 +1,11 @@
 import { Router } from 'express';
-import mongoose from 'mongoose';
+import { isUsingFallback } from '../config/supabase.js';
 
 const router = Router();
 
 router.get('/health', (req, res) => {
-  const dbState = mongoose.connection.readyState;
-  const dbStatus = dbState === 1 ? 'connected' : dbState === 2 ? 'connecting' : 'disconnected';
+  const isFallback = isUsingFallback();
+  const dbStatus = isFallback ? 'in-memory-fallback' : 'connected';
   const hasGeminiKey = Boolean(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim() !== '');
 
   res.json({
@@ -15,7 +15,10 @@ router.get('/health', (req, res) => {
       service: 'TrustLense Security API',
       version: '1.0.0',
       timestamp: new Date().toISOString(),
-      database: dbStatus,
+      database: {
+        provider: 'Supabase PostgreSQL',
+        status: dbStatus
+      },
       aiEngine: {
         configured: hasGeminiKey,
         model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',

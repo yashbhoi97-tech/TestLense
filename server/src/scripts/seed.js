@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
-import { connectDB, disconnectDB } from '../config/db.js';
+import { initSupabase } from '../config/supabase.js';
 import { User } from '../models/User.js';
 import { Scan } from '../models/Scan.js';
 import { AuditLog } from '../models/AuditLog.js';
@@ -182,12 +182,12 @@ const sampleScansData = [
 
 export async function seedDatabase() {
   console.log('--- Starting TrustLense Database Seeding ---');
-  await connectDB();
+  initSupabase();
 
   try {
     // 1. Create or reset demo user
     const demoEmail = 'demo@trustlense.dev';
-    let user = await User.findOne({ email: demoEmail });
+    let user = await User.findByEmail(demoEmail);
 
     if (user) {
       console.log(`Found existing demo user: ${demoEmail}`);
@@ -275,8 +275,6 @@ export async function seedDatabase() {
     console.log('--- Seed Complete ---');
   } catch (err) {
     console.error('Error seeding database:', err);
-  } finally {
-    await disconnectDB();
   }
 }
 

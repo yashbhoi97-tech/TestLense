@@ -4,6 +4,7 @@
 
 [![CI / Smoke Test Suite](https://img.shields.io/badge/smoke--tests-22%2F22%20passed-10B981.svg)](#testing)
 [![Architecture](https://img.shields.io/badge/architecture-decoupled%20client%2Fserver-0F766E.svg)](#architecture)
+[![Database](https://img.shields.io/badge/database-Supabase%20PostgreSQL-3ECF8E.svg)](#database-layer--supabase-postgresql)
 [![Privacy](https://img.shields.io/badge/privacy-zero%20raw%20data%20storage-1D4ED8.svg)](#privacy-by-design)
 [![AI Engine](https://img.shields.io/badge/AI-Google%20Gemini%202.5%20Flash-9333EA.svg)](#ai-engine--fail-safe-architecture)
 
@@ -17,12 +18,6 @@ Every day, digital users and developers are bombarded with deceptive content:
 - **Accidental PII / Secret Leaks:** Pasting sensitive Indian Aadhaar, PAN cards, payment card numbers, or AWS / OpenAI secret tokens into codebases or third-party AI prompts.
 - **Unintelligible Privacy Policies:** Complex legal policies disguising third-party data broker sharing and perpetual retention.
 - **AI Hallucinations & Injections:** Untrusted AI-generated responses with synthetic citations, overconfidence bias, or jailbreak vulnerabilities.
-
-Most users lack immediate, explainable tools to answer:
-1. *Is this message safe or fraudulent?*
-2. *What sensitive information is exposed here?*
-3. *What should I do next?*
-4. *Can I test this without having my data stored?*
 
 ---
 
@@ -62,7 +57,7 @@ Most users lack immediate, explainable tools to answer:
 ## 4. Privacy by Design Guarantee
 
 ### **Absolute Rule: NEVER Store Raw User Input**
-- The original content submitted by users is **NEVER stored** in MongoDB, server logs, console logs, or audit records.
+- The original content submitted by users is **NEVER stored** in Supabase, server logs, console logs, or audit records.
 - Input exists in-memory only during the lifecycle of the scan request.
 - The database persists **only**:
   - Sanitized redacted text with sensitive numbers masked (e.g. `XXXX-XXXX-1234`, `j***@example.com`, `[REDACTED]`).
@@ -87,7 +82,7 @@ graph TD
         Frontend --> LenseWidget[Lense 24/7 AI Assistant Widget]
     end
 
-    Frontend -->|REST API Requests| Backend[Node.js + Express API (Render)]
+    Frontend -->|REST API Requests (VITE_API_URL)| Backend[Node.js + Express API (Render)]
 
     subgraph Server Architecture [/server]
         Backend --> Helmet[Helmet + Strict CORS]
@@ -101,22 +96,25 @@ graph TD
         
         GeminiBridge -.->|AI Fallback if offline| Engine
         
-        Backend --> DB[(MongoDB Atlas / In-Memory Dev)]
+        Backend --> SupabaseClient[Supabase PostgreSQL Client (@supabase/supabase-js)]
     end
 
+    SupabaseClient -->|Encrypted Storage| SupabaseDB[(Supabase PostgreSQL)]
     GeminiBridge -->|Secure AI Calls| GoogleGemini[Google Gemini 2.5 Flash API]
 ```
 
 ---
 
-## 6. AI Engine & Fail-Safe Fallback
+## 6. Database Layer — Supabase PostgreSQL
 
-1. **Strict Input Boundary:** All submitted user content is passed to Gemini explicitly treated as **untrusted data**. System prompts enforce strict JSON output with Zod validation.
-2. **Deterministic Rules First:** Deterministic regex algorithms and mathematical validators run first to establish baseline security flags.
-3. **Graceful Fallback:** If the Gemini API key is missing, times out (20s limit), or encounters rate limits:
-   - The platform **never crashes**.
-   - It sets `aiUnavailable: true`.
-   - The UI displays an informative notice while continuing to provide comprehensive rule-based risk scores and redactions.
+All data models are defined in [`supabase_schema.sql`](./supabase_schema.sql):
+
+- `users` (id UUID, name TEXT, email TEXT UNIQUE, password_hash TEXT, created_at TIMESTAMPTZ)
+- `scans` (id UUID, user_id UUID, mode TEXT, risk_score INT, risk_level TEXT, verdict TEXT, summary TEXT, findings JSONB, redacted_text TEXT, recommended_actions JSONB, extras JSONB, ai_unavailable BOOL, input_length INT, created_at TIMESTAMPTZ)
+- `audit_logs` (id UUID, user_id UUID, action TEXT, mode TEXT, ip TEXT, user_agent TEXT, created_at TIMESTAMPTZ)
+- `tickets` (id UUID, user_id UUID, email TEXT, subject TEXT, message TEXT, chat_transcript JSONB, status TEXT, created_at TIMESTAMPTZ)
+
+> **Security Rule:** Supabase credentials (`SUPABASE_SECRET_KEY`) exist **exclusively** on the backend and are NEVER exposed to the frontend.
 
 ---
 
@@ -133,7 +131,7 @@ graph TD
 
 ### **Backend (`/server`)**
 - **Runtime:** Node.js (ES Modules), Express
-- **Database:** MongoDB with Mongoose (automatic `mongodb-memory-server` in development)
+- **Database:** Supabase PostgreSQL (`@supabase/supabase-js`)
 - **Authentication:** JWT (7-day expiry), `bcryptjs` (&ge; 10 rounds)
 - **Validation & Security:** `zod`, `helmet`, `cors`, `express-rate-limit`, `morgan`
 - **AI Integration:** Google Gemini API (`gemini-2.5-flash`)
@@ -141,10 +139,6 @@ graph TD
 ---
 
 ## 8. Quick Start & Local Setup
-
-### Prerequisites
-- Node.js &ge; 18.x
-- npm &ge; 9.x
 
 ### 1. Clone & Install
 
@@ -168,14 +162,15 @@ npm install
 ```env
 PORT=5000
 NODE_ENV=development
-MONGODB_URI=
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SECRET_KEY=your_supabase_service_role_key
 JWT_SECRET=trustlense_dev_secret_98f4c1e82a3b4c5d6e7f8091a2b3c4d5e6f7
 JWT_EXPIRES_IN=7d
 GEMINI_API_KEY=
 GEMINI_MODEL=gemini-2.5-flash
 CLIENT_URL=http://localhost:5173
 ```
-*(Note: If `MONGODB_URI` and `GEMINI_API_KEY` are empty in development, TrustLense automatically starts an in-memory database and uses its deterministic rules engine).*
+*(Note: If `SUPABASE_URL` and `GEMINI_API_KEY` are empty in local development, TrustLense automatically initializes an in-memory database adapter and uses its deterministic rules engine).*
 
 **Client (`client/.env`):**
 ```env
@@ -217,30 +212,6 @@ cd server
 npm run test:api
 ```
 
-### Test Assertions Verified:
-1. `GET /api/health` returns status 200 and healthy.
-2. `POST /api/auth/register` creates user and returns JWT.
-3. `POST /api/auth/login` verifies bcrypt credentials.
-4. `GET /api/auth/me` retrieves authenticated profile.
-5. Unauthorized requests return `401 Unauthorized`.
-6. Validation errors trigger formatted `400 Bad Request`.
-7. `POST /api/scan` executes Leak Guard mode.
-8. Verifies Aadhaar detection.
-9. Verifies Indian PAN card detection.
-10. Verifies Payment Card detection via Luhn algorithm.
-11. Verifies sensitive redaction output.
-12. **Privacy Guarantee:** Verifies raw sensitive numbers are NOT present in database documents.
-13. Verifies Scam Analyzer detects UPI PIN traps & phishing URLs.
-14. Verifies Policy Decoder detects third-party data broker sharing.
-15. Verifies Trust Auditor detects prompt injection sequences.
-16. `GET /api/scans` returns user scan history.
-17. `GET /api/stats` computes aggregated threat telemetry.
-18. `POST /api/chat` delivers assistant responses from Lense.
-19. Lense chat provides interactive React Router navigation actions.
-20. Gemini-empty fallback operates seamlessly without crashes.
-21. `DELETE /api/scans/:id` removes single scan.
-22. `DELETE /api/me/data` permanently erases all user data.
-
 ---
 
 ## 10. Demo Credentials for Hackathon Judges
@@ -253,32 +224,12 @@ npm run test:api
 
 ---
 
-## 11. API Reference
+## 11. Deployment
 
-| Method | Endpoint | Description | Auth Required |
-|---|---|---|---|
-| `GET` | `/api/health` | System health and AI engine status | No |
-| `POST` | `/api/auth/register` | Register new user account | No |
-| `POST` | `/api/auth/login` | Authenticate user & receive JWT | No |
-| `GET` | `/api/auth/me` | Fetch authenticated user profile | Yes |
-| `POST` | `/api/scan` | Analyze text payload with chosen security mode | Optional |
-| `GET` | `/api/scans` | List historical scans with filtering & pagination | Optional |
-| `GET` | `/api/scans/:id` | Fetch specific scan record | Optional |
-| `DELETE` | `/api/scans/:id` | Delete scan record | Yes |
-| `GET` | `/api/stats` | Aggregated threat metrics for dashboard | Optional |
-| `POST` | `/api/chat` | Chat with 24/7 AI security assistant Lense | Optional |
-| `GET` | `/api/audit-logs` | Retrieve user audit trail | Yes |
-| `DELETE` | `/api/me/data` | Permanently erase all personal scans & audit logs | Yes |
-| `POST` | `/api/tickets` | Submit escalation ticket to security team | Optional |
+Refer to [`DEPLOY_CHECKLIST.md`](./DEPLOY_CHECKLIST.md) for step-by-step instructions to deploy the frontend to **Vercel** and backend to **Render** with **Supabase PostgreSQL** and **Google Gemini API**.
 
 ---
 
-## 12. Deployment
-
-Refer to [`DEPLOY_CHECKLIST.md`](./DEPLOY_CHECKLIST.md) for step-by-step instructions to deploy the frontend to **Vercel** and backend to **Render** with **MongoDB Atlas** and **Google Gemini API**.
-
----
-
-## 13. License
+## 12. License
 
 Distributed under the MIT License. Built for the AI Security, Privacy & Trust Hackathon.

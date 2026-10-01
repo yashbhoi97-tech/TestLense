@@ -88,7 +88,7 @@ export async function createScan(req, res, next) {
       finalExtras = aiResult.extras || {};
     }
 
-    // 4. Persist scan document to MongoDB (NEVER storing raw text!)
+    // 4. Persist scan document to Supabase (NEVER storing raw text!)
     const scanDoc = await Scan.create({
       userId: req.user?._id || null,
       mode,
@@ -151,11 +151,10 @@ export async function getScans(req, res, next) {
 
     const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
     const total = await Scan.countDocuments(query);
-    const scans = await Scan.find(query)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit, 10))
-      .select('-__v');
+    const scans = await Scan.find(query, {
+      skip,
+      limit: parseInt(limit, 10)
+    });
 
     res.json({
       success: true,
@@ -173,7 +172,7 @@ export async function getScans(req, res, next) {
 
 export async function getScanById(req, res, next) {
   try {
-    const scan = await Scan.findById(req.params.id).select('-__v');
+    const scan = await Scan.findById(req.params.id);
     if (!scan) {
       return res.status(404).json({
         success: false,
